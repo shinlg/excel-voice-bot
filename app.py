@@ -15,7 +15,7 @@ st.title("Hệ thống thông báo thu tiền tự động")
 st.sidebar.header("⚙️ Cấu hình giọng đọc")
 voice_option = st.sidebar.selectbox(
     "Chọn giọng đọc:",
-    options=["Chị Google (mặc định)", "Nữ (Giọng miền Nam)", "Nam (Giọng miền Nam)"],
+    options=["Chị Google (mặc định)", "Nữ (Giọng miền Nam)", "Nam (Giọng miền Nammmm)"],
     index=0
 )
 
@@ -103,7 +103,7 @@ def play_combined_audio(text_list, selected_option):
             os.remove(temp_file)
         
         # Tự động tính thời gian dừng dựa trên số lượng từ (khoảng 0.5 giây / 1 từ)
-        estimated_seconds = max(4, int(len(full_text.split()) * 0.9))
+        estimated_seconds = max(10, int(len(full_text.split()) * 0.5))
         
         with st.spinner(f"🔊 Đang phát thông báo bằng {selected_option}..."):
             time.sleep(estimated_seconds)
