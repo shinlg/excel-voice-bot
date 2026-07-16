@@ -9,7 +9,7 @@ import edge_tts
 st.set_page_config(page_title="Hệ thống thông báo thu tiền", page_icon="💰", layout="centered")
 st.title("Hệ thống thông báo thu tiền tự động")
 
-# 1. Cấu hình chọn giọng đọc trên giao diện (Đã sửa đổi ánh xạ chính xác thực tế)
+# 1. Cấu hình chọn giọng đọc trên giao diện
 st.sidebar.header("⚙️ Cấu hình giọng đọc")
 voice_option = st.sidebar.selectbox(
     "Chọn giọng đọc:",
@@ -17,10 +17,10 @@ voice_option = st.sidebar.selectbox(
     index=0
 )
 
-# Ánh xạ chuẩn xác theo thực tế phát âm của Microsoft Edge TTS
+# Ánh xạ chuẩn xác theo thực tế phát âm của Microsoft Edge TTS mới nhất
 VOICE_MAP = {
-    "Nam (Giọng miền Nam)": "vi-VN-NamMinhNeural",  # Thực tế phát giọng Nam, miền Nam
-    "Nữ (Giọng miền Bắc)": "vi-VN-HoaiNamNeural"     # Thực tế phát giọng Nữ, miền Bắc
+    "Nam (Giọng miền Nam)": "vi-VN-NamMinhNeural",  # Giọng Nam, miền Nam
+    "Nữ (Giọng miền Bắc)": "vi-VN-HoaiMyNeural"     # Sửa thành HoaiMyNeural (Giọng Nữ, miền Bắc hoạt động ổn định)
 }
 selected_voice = VOICE_MAP[voice_option]
 
