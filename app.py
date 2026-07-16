@@ -100,16 +100,14 @@ def play_combined_audio(text_list, selected_option):
 # Khu vực quản lý dữ liệu file Excel
 uploaded_file = st.file_uploader("Kéo thả hoặc chọn file Excel dữ liệu mới tại đây (.xlsx)", type=["xlsx"])
 
+df = None
+
+# CHỈ xử lý hiển thị khi người dùng đã tải file mới lên
 if uploaded_file is not None:
     df = pd.read_excel(uploaded_file)
     st.info("🔄 Đang hiển thị dữ liệu từ file bạn vừa tải lên:")
 else:
-    if os.path.exists("data.xlsx"):
-        df = pd.read_excel("data.xlsx")
-        st.info("📂 Đang hiển thị dữ liệu mặc định hệ thống:")
-    else:
-        df = None
-        st.warning("Chưa có dữ liệu. Vui lòng tải file Excel lên hệ thống.")
+    st.warning("Chưa có dữ liệu mới được tải lên. Vui lòng kéo thả file Excel vào để bắt đầu.")
 
 if df is not None:
     st.dataframe(df, use_container_width=True)
@@ -147,7 +145,7 @@ if df is not None:
                     # Đổi trạng thái trực tiếp trên bộ nhớ giao diện
                     df.at[index, "status"] = 1
                 
-                # ---- TÍNH TOÁN NGÀY T-1 (HÔM QUA) ----
+                # Tính toán ngày T-1 (hôm qua)
                 yesterday = datetime.now() - timedelta(days=1)
                 date_str = f"ngày {yesterday.day} tháng {yesterday.month} năm {yesterday.year}"
                 
