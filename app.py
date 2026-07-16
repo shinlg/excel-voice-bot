@@ -9,18 +9,18 @@ import edge_tts
 st.set_page_config(page_title="Hệ thống thông báo thu tiền", page_icon="💰", layout="centered")
 st.title("Hệ thống thông báo thu tiền tự động")
 
-# 1. Thêm cấu hình chọn giọng đọc trên giao diện
+# 1. Cấu hình chọn giọng đọc trên giao diện (Đã sửa đổi ánh xạ chính xác thực tế)
 st.sidebar.header("⚙️ Cấu hình giọng đọc")
 voice_option = st.sidebar.selectbox(
     "Chọn giọng đọc:",
-    options=["Nam (Hoài Nam)", "Nữ (Nam Minh)"],
+    options=["Nam (Giọng miền Nam)", "Nữ (Giọng miền Bắc)"],
     index=0
 )
 
-# Ánh xạ tên giao diện sang mã giọng đọc của Microsoft Edge
+# Ánh xạ chuẩn xác theo thực tế phát âm của Microsoft Edge TTS
 VOICE_MAP = {
-    "Nam (Hoài Nam)": "vi-VN-HoaiNamNeural",
-    "Nữ (Nam Minh)": "vi-VN-NamMinhNeural"
+    "Nam (Giọng miền Nam)": "vi-VN-NamMinhNeural",  # Thực tế phát giọng Nam, miền Nam
+    "Nữ (Giọng miền Bắc)": "vi-VN-HoaiNamNeural"     # Thực tế phát giọng Nữ, miền Bắc
 }
 selected_voice = VOICE_MAP[voice_option]
 
@@ -40,12 +40,12 @@ def clean_amount_for_speech(amount_val):
     except:
         return str(amount_val)
 
-# 2. Hàm bất đồng bộ xử lý chuyển văn bản thành âm thanh qua Edge-TTS
+# Hàm bất đồng bộ xử lý chuyển văn bản thành âm thanh qua Edge-TTS
 async def generate_edge_tts(text, voice, output_file):
     communicate = edge_tts.Communicate(text, voice)
     await communicate.save(output_file)
 
-def play_combined_audio(text_list, voice):
+def play_combined_audio(text_list, voice, voice_display_name):
     """Gom dữ liệu văn bản thành 1 file MP3 bằng Edge-TTS và phát trên trình duyệt"""
     if not text_list:
         return
@@ -54,13 +54,14 @@ def play_combined_audio(text_list, voice):
     temp_file = "temp_edge_tts.mp3"
     
     try:
-        # Chạy hàm bất đồng bộ trong môi trường đồng bộ của Streamlit
+        # Chạy hàm bất đồng bộ sinh file âm thanh
         asyncio.run(generate_edge_tts(full_text, voice, temp_file))
         
         with open(temp_file, "rb") as f:
             data = f.read()
             b64 = base64.b64encode(data).decode()
             
+            # Sử dụng HTML5 audio kết hợp Javascript để ép trình duyệt autoplay
             audio_html = f"""
                 <div id="audio-player-container">
                     <audio id="speech-audio" autoplay>
@@ -81,10 +82,10 @@ def play_combined_audio(text_list, voice):
         if os.path.exists(temp_file):
             os.remove(temp_file)
         
-        # Tự động tính thời gian dừng dựa trên số lượng từ (Edge-TTS đọc truyền cảm, cần khoảng 0.5s/từ)
+        # Tự động tính thời gian dừng dựa trên số lượng từ (khoảng 0.5 giây / 1 từ)
         estimated_seconds = max(4, int(len(full_text.split()) * 0.5))
         
-        with st.spinner(f"🔊 Đang phát thông báo bằng giọng {voice_option}..."):
+        with st.spinner(f"🔊 Đang phát thông báo bằng {voice_display_name}..."):
             time.sleep(estimated_seconds)
             
     except Exception as e:
@@ -127,11 +128,13 @@ if df is not None:
                     sentences_to_speak.append(sentence)
                     st.success(f"✓ Đã duyệt: {sentence}")
                     
+                    # Đổi trạng thái trực tiếp trên bộ nhớ giao diện
                     df.at[index, "status"] = 1
                 
-                # Truyền thêm tham số cấu hình giọng đọc đã chọn vào hàm phát
-                play_combined_audio(sentences_to_speak, selected_voice)
+                # Gọi hàm phát âm thanh
+                play_combined_audio(sentences_to_speak, selected_voice, voice_option)
                 
+                # Cập nhật và làm sạch phiên hoạt động
                 st.session_state["updated_df"] = df
                 st.rerun()
             else:
