@@ -26,18 +26,32 @@ VOICE_MAP = {
 }
 
 def clean_amount_for_speech(amount_val):
+    """Nâng cấp đọc tự động đầy đủ Tỷ, Triệu, Nghìn, Đồng chính xác"""
     try:
         clean_val = str(amount_val).replace(",", "").strip()
         num = int(float(clean_val))
-        if num == 0: return "0 đồng"
-        trieu = num // 1_000_000
+        if num == 0: 
+            return "0 đồng"
+        
+        ty = num // 1_000_000_000
+        trieu = (num % 1_000_000_000) // 1_000_000
         nghin = (num % 1_000_000) // 1_000
         dong = num % 1_000
+        
         speech_text = ""
-        if trieu > 0: speech_text += f"{trieu} triệu "
-        if nghin > 0: speech_text += f"{nghin} nghìn "
-        if dong > 0: speech_text += f"{dong} đồng"
-        return speech_text.strip()
+        if ty > 0: 
+            speech_text += f"{ty} tỷ "
+        if trieu > 0: 
+            speech_text += f"{trieu} triệu "
+        if nghin > 0: 
+            speech_text += f"{nghin} nghìn "
+        if dong > 0: 
+            speech_text += f"{dong} đồng"
+        else:
+            speech_text += " đồng"  # Thêm đơn vị đồng ở cuối nếu số tròn chục/trăm/nghìn/triệu/tỷ
+            
+        # Làm sạch khoảng trắng thừa
+        return " ".join(speech_text.split()).strip()
     except:
         return str(amount_val)
 
