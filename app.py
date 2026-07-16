@@ -103,7 +103,7 @@ def play_combined_audio(text_list, selected_option):
             os.remove(temp_file)
         
         # Tự động tính thời gian dừng dựa trên số lượng từ (khoảng 0.5 giây / 1 từ)
-        estimated_seconds = max(4, int(len(full_text.split()) * 2))
+        estimated_seconds = max(4, int(len(full_text.split()) * 0.1))
         
         with st.spinner(f"🔊 Đang phát thông báo bằng {selected_option}..."):
             time.sleep(estimated_seconds)
