@@ -10,7 +10,7 @@ import edge_tts
 st.set_page_config(page_title="Hệ thống thông báo thu tiền", page_icon="💰", layout="centered")
 st.title("Hệ thống thông báo thu tiền tự động")
 
-# 1. Cấu hình chọn giọng đọc trên giao diện (Thêm tùy chọn Chị Google)
+# 1. Cấu hình chọn giọng đọc trên giao diện
 st.sidebar.header("⚙️ Cấu hình giọng đọc")
 voice_option = st.sidebar.selectbox(
     "Chọn giọng đọc:",
@@ -123,10 +123,20 @@ if df is not None:
             
             if not unread_rows.empty:
                 sentences_to_speak = []
+                total_amt = 0  # Biến lưu tổng số tiền thu được
                 
+                # Duyệt qua các dòng dữ liệu chưa đọc
                 for index, row in unread_rows.iterrows():
                     team_val = str(row["team"]).strip()
                     user_val = str(row["user"]).strip()
+                    
+                    # Cộng dồn giá trị số tiền của dòng hiện tại
+                    try:
+                        amt_val = float(str(row["amt"]).replace(",", "").strip())
+                        total_amt += amt_val
+                    except:
+                        pass
+                    
                     amt_speech = clean_amount_for_speech(row["amt"])
                     sentence = f"{team_val}, {user_val} đã thu {amt_speech}"
                     
@@ -135,6 +145,12 @@ if df is not None:
                     
                     # Đổi trạng thái trực tiếp trên bộ nhớ giao diện
                     df.at[index, "status"] = 1
+                
+                # Thêm câu thông báo tổng số tiền thu được vào cuối danh sách đọc
+                total_speech = clean_amount_for_speech(total_amt)
+                total_sentence = f"Tổng số thu là {total_speech}"
+                sentences_to_speak.append(total_sentence)
+                st.info(f"📊 {total_sentence}")
                 
                 # Gọi hàm phát âm thanh với cấu hình tùy chọn giọng
                 play_combined_audio(sentences_to_speak, voice_option)
