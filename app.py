@@ -1,12 +1,28 @@
 import streamlit as st
 import pandas as pd
-from gtts import gTTS
 import os
 import base64
 import time
+import asyncio
+import edge_tts
 
 st.set_page_config(page_title="Hệ thống thông báo thu tiền", page_icon="💰", layout="centered")
 st.title("Hệ thống thông báo thu tiền tự động")
+
+# 1. Thêm cấu hình chọn giọng đọc trên giao diện
+st.sidebar.header("⚙️ Cấu hình giọng đọc")
+voice_option = st.sidebar.selectbox(
+    "Chọn giọng đọc:",
+    options=["Nam (Hoài Nam)", "Nữ (Nam Minh)"],
+    index=0
+)
+
+# Ánh xạ tên giao diện sang mã giọng đọc của Microsoft Edge
+VOICE_MAP = {
+    "Nam (Hoài Nam)": "vi-VN-HoaiNamNeural",
+    "Nữ (Nam Minh)": "vi-VN-NamMinhNeural"
+}
+selected_voice = VOICE_MAP[voice_option]
 
 def clean_amount_for_speech(amount_val):
     try:
@@ -24,24 +40,27 @@ def clean_amount_for_speech(amount_val):
     except:
         return str(amount_val)
 
-def play_combined_audio(text_list):
-    """Gom toàn bộ nội dung thành 1 file âm thanh và ép trình duyệt phát hết không ngắt quãng"""
+# 2. Hàm bất đồng bộ xử lý chuyển văn bản thành âm thanh qua Edge-TTS
+async def generate_edge_tts(text, voice, output_file):
+    communicate = edge_tts.Communicate(text, voice)
+    await communicate.save(output_file)
+
+def play_combined_audio(text_list, voice):
+    """Gom dữ liệu văn bản thành 1 file MP3 bằng Edge-TTS và phát trên trình duyệt"""
     if not text_list:
         return
     
-    # Nối các câu lại, tạo khoảng nghỉ ngắn bằng dấu chấm và dấu phẩy
     full_text = ", , ".join(text_list)
+    temp_file = "temp_edge_tts.mp3"
     
     try:
-        tts = gTTS(text=full_text, lang='vi', slow=False)
-        temp_file = "temp_all.mp3"
-        tts.save(temp_file)
+        # Chạy hàm bất đồng bộ trong môi trường đồng bộ của Streamlit
+        asyncio.run(generate_edge_tts(full_text, voice, temp_file))
         
         with open(temp_file, "rb") as f:
             data = f.read()
             b64 = base64.b64encode(data).decode()
             
-            # Sử dụng Audio Context qua thẻ HTML cố định để tránh bị Streamlit Rerun làm mất hiệu lực phát
             audio_html = f"""
                 <div id="audio-player-container">
                     <audio id="speech-audio" autoplay>
@@ -52,26 +71,26 @@ def play_combined_audio(text_list):
                     var audio = document.getElementById('speech-audio');
                     if(audio) {{
                         audio.play().catch(function(error) {{
-                            console.log("Chặn autoplay từ trình duyệt:", error);
+                            console.log("Autoplay bị chặn bởi trình duyệt:", error);
                         }});
                     }}
                 </script>
             """
             st.markdown(audio_html, unsafe_allow_html=True)
             
-        os.remove(temp_file)
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
         
-        # Tự động tính toán thời gian chờ dựa trên độ dài văn bản (tránh tắt giao diện quá sớm)
-        # Trung bình 1 từ tiếng Việt đọc hết khoảng 0.4 giây. Cần tối thiểu 4 giây để khởi tạo.
-        estimated_seconds = max(4, int(len(full_text.split()) * 0.45))
+        # Tự động tính thời gian dừng dựa trên số lượng từ (Edge-TTS đọc truyền cảm, cần khoảng 0.5s/từ)
+        estimated_seconds = max(4, int(len(full_text.split()) * 0.5))
         
-        with st.spinner(f"🔊 Hệ thống đang đọc thông báo (Vui lòng chờ trong {estimated_seconds} giây)..."):
+        with st.spinner(f"🔊 Đang phát thông báo bằng giọng {voice_option}..."):
             time.sleep(estimated_seconds)
             
     except Exception as e:
-        st.error(f"Lỗi tạo âm thanh: {e}")
+        st.error(f"Lỗi khởi tạo giọng đọc Edge-TTS: {e}")
 
-# Khu vực tải file dữ liệu
+# Khu vực quản lý dữ liệu file Excel
 uploaded_file = st.file_uploader("Kéo thả hoặc chọn file Excel dữ liệu mới tại đây (.xlsx)", type=["xlsx"])
 
 if uploaded_file is not None:
@@ -99,7 +118,6 @@ if df is not None:
             if not unread_rows.empty:
                 sentences_to_speak = []
                 
-                # Thu thập toàn bộ danh sách nội dung cần đọc
                 for index, row in unread_rows.iterrows():
                     team_val = str(row["team"]).strip()
                     user_val = str(row["user"]).strip()
@@ -109,13 +127,11 @@ if df is not None:
                     sentences_to_speak.append(sentence)
                     st.success(f"✓ Đã duyệt: {sentence}")
                     
-                    # Cập nhật trạng thái dòng dữ liệu thành 1
                     df.at[index, "status"] = 1
                 
-                # Tiến hành phát toàn bộ danh sách câu gom cụm
-                play_combined_audio(sentences_to_speak)
+                # Truyền thêm tham số cấu hình giọng đọc đã chọn vào hàm phát
+                play_combined_audio(sentences_to_speak, selected_voice)
                 
-                # Lưu trạng thái mới vào bộ nhớ tạm thời và làm mới giao diện
                 st.session_state["updated_df"] = df
                 st.rerun()
             else:
