@@ -4,6 +4,7 @@ import os
 import base64
 import time
 import asyncio
+from datetime import datetime, timedelta
 from gtts import gTTS
 import edge_tts
 
@@ -146,9 +147,13 @@ if df is not None:
                     # Đổi trạng thái trực tiếp trên bộ nhớ giao diện
                     df.at[index, "status"] = 1
                 
-                # Thêm câu thông báo tổng số tiền thu được vào cuối danh sách đọc
+                # ---- TÍNH TOÁN NGÀY T-1 (HÔM QUA) ----
+                yesterday = datetime.now() - timedelta(days=1)
+                date_str = f"ngày {yesterday.day} tháng {yesterday.month} năm {yesterday.year}"
+                
+                # Thêm câu thông báo tổng số tiền thu ngày T-1 vào cuối danh sách đọc
                 total_speech = clean_amount_for_speech(total_amt)
-                total_sentence = f"Tổng số thu ngày hôm nay là {total_speech}"
+                total_sentence = f"Tổng số thu {date_str} là {total_speech}"
                 sentences_to_speak.append(total_sentence)
                 st.info(f"📊 {total_sentence}")
                 
