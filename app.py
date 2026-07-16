@@ -20,7 +20,7 @@ voice_option = st.sidebar.selectbox(
 # Ánh xạ chuẩn xác theo thực tế phát âm của Microsoft Edge TTS mới nhất
 VOICE_MAP = {
     "Nam (Giọng miền Nam)": "vi-VN-NamMinhNeural",  # Giọng Nam, miền Nam
-    "Nữ (Giọng miền Bắc)": "vi-VN-HoaiMyNeural"     # Sửa thành HoaiMyNeural (Giọng Nữ, miền Bắc hoạt động ổn định)
+    "Nữ (Giọng miền Nam)": "vi-VN-HoaiMyNeural"     # Sửa thành HoaiMyNeural (Giọng Nữ, miền Bắc hoạt động ổn định)
 }
 selected_voice = VOICE_MAP[voice_option]
 
