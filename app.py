@@ -148,7 +148,7 @@ if df is not None:
                 
                 # Thêm câu thông báo tổng số tiền thu được vào cuối danh sách đọc
                 total_speech = clean_amount_for_speech(total_amt)
-                total_sentence = f"Tổng số thu là {total_speech}"
+                total_sentence = f"Tổng số thu ngày hôm nay là {total_speech}"
                 sentences_to_speak.append(total_sentence)
                 st.info(f"📊 {total_sentence}")
                 
