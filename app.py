@@ -13,7 +13,7 @@ st.title("Hệ thống thông báo thu tiền tự động")
 st.sidebar.header("⚙️ Cấu hình giọng đọc")
 voice_option = st.sidebar.selectbox(
     "Chọn giọng đọc:",
-    options=["Nam (Giọng miền Nam)", "Nữ (Giọng miền Bắc)"],
+    options=["Nam (Giọng miền Nam)", "Nữ (Giọng miền Nam)"],
     index=0
 )
 
