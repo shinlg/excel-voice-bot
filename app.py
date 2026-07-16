@@ -25,12 +25,12 @@ def clean_amount_for_speech(amount_val):
         return str(amount_val)
 
 def play_combined_audio(text_list):
-    """Gom toàn bộ nội dung thành 1 file duy nhất và phát để tránh bị ngắt quãng"""
+    """Gom toàn bộ nội dung thành 1 file âm thanh và ép trình duyệt phát hết không ngắt quãng"""
     if not text_list:
         return
     
-    # Nối các câu lại với nhau, nghỉ 1 chút giữa các câu bằng dấu phẩy hoặc chấm
-    full_text = " . Ngắt câu . ".join(text_list)
+    # Nối các câu lại, tạo khoảng nghỉ ngắn bằng dấu chấm và dấu phẩy
+    full_text = ", , ".join(text_list)
     
     try:
         tts = gTTS(text=full_text, lang='vi', slow=False)
@@ -41,30 +41,46 @@ def play_combined_audio(text_list):
             data = f.read()
             b64 = base64.b64encode(data).decode()
             
-            # Sử dụng HTML5 chuẩn để tự động phát
-            md = f"""
-                <audio autoplay="true" style="display:none;">
-                <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-                </audio>
-                """
-            st.markdown(md, unsafe_allow_html=True)
+            # Sử dụng Audio Context qua thẻ HTML cố định để tránh bị Streamlit Rerun làm mất hiệu lực phát
+            audio_html = f"""
+                <div id="audio-player-container">
+                    <audio id="speech-audio" autoplay>
+                        <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                    </audio>
+                </div>
+                <script>
+                    var audio = document.getElementById('speech-audio');
+                    if(audio) {{
+                        audio.play().catch(function(error) {{
+                            console.log("Chặn autoplay từ trình duyệt:", error);
+                        }});
+                    }}
+                </script>
+            """
+            st.markdown(audio_html, unsafe_allow_html=True)
             
         os.remove(temp_file)
-        # Cho trình duyệt 2 giây để tải và bắt đầu phát trước khi thực hiện hành động khác
-        time.sleep(2) 
+        
+        # Tự động tính toán thời gian chờ dựa trên độ dài văn bản (tránh tắt giao diện quá sớm)
+        # Trung bình 1 từ tiếng Việt đọc hết khoảng 0.4 giây. Cần tối thiểu 4 giây để khởi tạo.
+        estimated_seconds = max(4, int(len(full_text.split()) * 0.45))
+        
+        with st.spinner(f"🔊 Hệ thống đang đọc thông báo (Vui lòng chờ trong {estimated_seconds} giây)..."):
+            time.sleep(estimated_seconds)
+            
     except Exception as e:
         st.error(f"Lỗi tạo âm thanh: {e}")
 
-# Khu vực tải file
+# Khu vực tải file dữ liệu
 uploaded_file = st.file_uploader("Kéo thả hoặc chọn file Excel dữ liệu mới tại đây (.xlsx)", type=["xlsx"])
 
 if uploaded_file is not None:
     df = pd.read_excel(uploaded_file)
-    st.info("🔄 Dạng dữ liệu từ file bạn vừa tải lên:")
+    st.info("🔄 Đang hiển thị dữ liệu từ file bạn vừa tải lên:")
 else:
     if os.path.exists("data.xlsx"):
         df = pd.read_excel("data.xlsx")
-        st.info("📂 Dạng dữ liệu mặc định hệ thống:")
+        st.info("📂 Đang hiển thị dữ liệu mặc định hệ thống:")
     else:
         df = None
         st.warning("Chưa có dữ liệu. Vui lòng tải file Excel lên hệ thống.")
@@ -83,29 +99,27 @@ if df is not None:
             if not unread_rows.empty:
                 sentences_to_speak = []
                 
-                # Bước 1: Thu thập toàn bộ các câu cần đọc
+                # Thu thập toàn bộ danh sách nội dung cần đọc
                 for index, row in unread_rows.iterrows():
                     team_val = str(row["team"]).strip()
                     user_val = str(row["user"]).strip()
                     amt_speech = clean_amount_for_speech(row["amt"])
-                    sentence = f"{team_val} {user_val} đã thu {amt_speech}"
+                    sentence = f"{team_val}, {user_val} đã thu {amt_speech}"
                     
                     sentences_to_speak.append(sentence)
-                    st.success(f"🔊 Chuẩn bị phát: {sentence}")
+                    st.success(f"✓ Đã duyệt: {sentence}")
                     
-                    # Cập nhật trạng thái
+                    # Cập nhật trạng thái dòng dữ liệu thành 1
                     df.at[index, "status"] = 1
                 
-                # Bước 2: Phát toàn bộ danh sách câu cùng một lúc
+                # Tiến hành phát toàn bộ danh sách câu gom cụm
                 play_combined_audio(sentences_to_speak)
                 
-                # Lưu ý: Vì Streamlit Cloud chạy online không thể lưu trực tiếp vào file Excel của bạn trên máy tính,
-                # trạng thái thay đổi tạm thời sẽ hiển thị trên màn hình sau khi st.rerun()
+                # Lưu trạng thái mới vào bộ nhớ tạm thời và làm mới giao diện
                 st.session_state["updated_df"] = df
                 st.rerun()
             else:
                 st.toast("Không có dữ liệu mới (status = 0) cần phát âm thanh!")
 
-# Hiển thị lại bảng dữ liệu đã cập nhật nếu có
 if "updated_df" in st.session_state:
-    st.success("✓ Đã xử lý xong các dòng dữ liệu mới.")
+    st.success("✓ Đã xử lý và thông báo xong toàn bộ danh sách dữ liệu mới.")
