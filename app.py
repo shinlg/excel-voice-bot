@@ -4,25 +4,25 @@ import os
 import base64
 import time
 import asyncio
+from gtts import gTTS
 import edge_tts
 
 st.set_page_config(page_title="Hệ thống thông báo thu tiền", page_icon="💰", layout="centered")
 st.title("Hệ thống thông báo thu tiền tự động")
 
-# 1. Cấu hình chọn giọng đọc trên giao diện
+# 1. Cấu hình chọn giọng đọc trên giao diện (Thêm tùy chọn Chị Google)
 st.sidebar.header("⚙️ Cấu hình giọng đọc")
 voice_option = st.sidebar.selectbox(
     "Chọn giọng đọc:",
-    options=["Nam (Giọng miền Nam)", "Nữ (Giọng miền Nam)"],
+    options=["Chị Google (mặc định)", "Nữ (Giọng miền Nam)", "Nam (Giọng miền Nam)"],
     index=0
 )
 
-# Ánh xạ chuẩn xác theo thực tế phát âm của Microsoft Edge TTS mới nhất
+# Ánh xạ giọng đọc cho Edge-TTS
 VOICE_MAP = {
-    "Nam (Giọng miền Nam)": "vi-VN-NamMinhNeural",  # Giọng Nam, miền Nam
-    "Nữ (Giọng miền Nam)": "vi-VN-HoaiMyNeural"     # Sửa thành HoaiMyNeural (Giọng Nữ, miền Bắc hoạt động ổn định)
+    "Nữ (Giọng miền Nam)": "vi-VN-HoaiMyNeural",
+    "Nam (Giọng miền Nam)": "vi-VN-NamMinhNeural"
 }
-selected_voice = VOICE_MAP[voice_option]
 
 def clean_amount_for_speech(amount_val):
     try:
@@ -45,17 +45,22 @@ async def generate_edge_tts(text, voice, output_file):
     communicate = edge_tts.Communicate(text, voice)
     await communicate.save(output_file)
 
-def play_combined_audio(text_list, voice, voice_display_name):
-    """Gom dữ liệu văn bản thành 1 file MP3 bằng Edge-TTS và phát trên trình duyệt"""
+def play_combined_audio(text_list, selected_option):
+    """Gom dữ liệu văn bản thành 1 file MP3 và phát trên trình duyệt dựa theo cấu hình đã chọn"""
     if not text_list:
         return
     
     full_text = ", , ".join(text_list)
-    temp_file = "temp_edge_tts.mp3"
+    temp_file = "temp_voice.mp3"
     
     try:
-        # Chạy hàm bất đồng bộ sinh file âm thanh
-        asyncio.run(generate_edge_tts(full_text, voice, temp_file))
+        # Xử lý tạo file âm thanh tùy theo tùy chọn được chọn
+        if selected_option == "Chị Google (mặc định)":
+            tts = gTTS(text=full_text, lang='vi', slow=False)
+            tts.save(temp_file)
+        else:
+            voice_code = VOICE_MAP[selected_option]
+            asyncio.run(generate_edge_tts(full_text, voice_code, temp_file))
         
         with open(temp_file, "rb") as f:
             data = f.read()
@@ -85,11 +90,11 @@ def play_combined_audio(text_list, voice, voice_display_name):
         # Tự động tính thời gian dừng dựa trên số lượng từ (khoảng 0.5 giây / 1 từ)
         estimated_seconds = max(4, int(len(full_text.split()) * 0.5))
         
-        with st.spinner(f"🔊 Đang phát thông báo bằng {voice_display_name}..."):
+        with st.spinner(f"🔊 Đang phát thông báo bằng {selected_option}..."):
             time.sleep(estimated_seconds)
             
     except Exception as e:
-        st.error(f"Lỗi khởi tạo giọng đọc Edge-TTS: {e}")
+        st.error(f"Lỗi khởi tạo giọng đọc: {e}")
 
 # Khu vực quản lý dữ liệu file Excel
 uploaded_file = st.file_uploader("Kéo thả hoặc chọn file Excel dữ liệu mới tại đây (.xlsx)", type=["xlsx"])
@@ -131,8 +136,8 @@ if df is not None:
                     # Đổi trạng thái trực tiếp trên bộ nhớ giao diện
                     df.at[index, "status"] = 1
                 
-                # Gọi hàm phát âm thanh
-                play_combined_audio(sentences_to_speak, selected_voice, voice_option)
+                # Gọi hàm phát âm thanh với cấu hình tùy chọn giọng
+                play_combined_audio(sentences_to_speak, voice_option)
                 
                 # Cập nhật và làm sạch phiên hoạt động
                 st.session_state["updated_df"] = df
