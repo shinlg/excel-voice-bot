@@ -15,7 +15,7 @@ st.title("Hệ thống thông báo thu tiền tự động")
 st.sidebar.header("⚙️ Cấu hình giọng đọc")
 voice_option = st.sidebar.selectbox(
     "Chọn giọng đọc:",
-    options=["Chị Google (mặc định)", "Nữ (Giọng miền Nam)", "Nam (Giọng miền Nammmm)"],
+    options=["Chị Google (mặc định)", "Nữ (Giọng miền Nam)", "Nam (Giọng miền Nam)"],
     index=0
 )
 
@@ -26,32 +26,35 @@ VOICE_MAP = {
 }
 
 def clean_amount_for_speech(amount_val):
-    """Nâng cấp đọc tự động đầy đủ Tỷ, Triệu, Nghìn, Đồng chính xác"""
+    """Quy đổi toàn bộ số tiền sang đơn vị tỷ đồng (Kể cả < 1 tỷ sẽ đọc là 0 phẩy... tỷ)"""
     try:
         clean_val = str(amount_val).replace(",", "").strip()
-        num = int(float(clean_val))
+        num = float(clean_val)
         if num == 0: 
-            return "0 đồng"
+            return "0 tỷ đồng"
         
-        ty = num // 1_000_000_000
-        trieu = (num % 1_000_000_000) // 1_000_000
-        nghin = (num % 1_000_000) // 1_000
-        dong = num % 1_000
+        # Quy đổi ra đơn vị tỷ
+        ty_val = num / 1_000_000_000
         
-        speech_text = ""
-        if ty > 0: 
-            speech_text += f"{ty} tỷ "
-        if trieu > 0: 
-            speech_text += f"{trieu} triệu "
-        if nghin > 0: 
-            speech_text += f"{nghin} nghìn "
-        if dong > 0: 
-            speech_text += f"{dong} đồng"
-        else:
-            speech_text += " đồng"  # Thêm đơn vị đồng ở cuối nếu số tròn chục/trăm/nghìn/triệu/tỷ
+        # Làm tròn đến tối đa 3 chữ số thập phân để tránh đọc số lẻ quá dài (Ví dụ: 350.12 triệu -> 0.35 tỷ)
+        ty_rounded = round(ty_val, 3)
+        
+        # Chuyển đổi dấu chấm thập phân thành chữ để công cụ TTS đọc đúng từ "phẩy"
+        ty_str = str(ty_rounded)
+        if "." in ty_str:
+            nguyen, thap_phan = ty_str.split(".")
+            # Loại bỏ số 0 thừa ở cuối phần thập phân
+            thap_phan = thap_phan.rstrip("0")
             
-        # Làm sạch khoảng trắng thừa
-        return " ".join(speech_text.split()).strip()
+            if thap_phan:
+                # Trình duyệt/TTS sẽ đọc chữ "phẩy" tự nhiên hơn dấu chấm
+                speech_text = f"{nguyen} phẩy {thap_phan} tỷ đồng"
+            else:
+                speech_text = f"{nguyen} tỷ đồng"
+        else:
+            speech_text = f"{ty_str} tỷ đồng"
+            
+        return speech_text
     except:
         return str(amount_val)
 
@@ -102,7 +105,7 @@ def play_combined_audio(text_list, selected_option):
         if os.path.exists(temp_file):
             os.remove(temp_file)
         
-        # Tự động tính thời gian dừng dựa trên số lượng từ (khoảng 0.5 giây / 1 từ)
+        # Tính thời gian dừng dựa trên số lượng từ (0.5 giây / 1 từ)
         estimated_seconds = max(4, int(len(full_text.split()) * 0.5))
         
         with st.spinner(f"🔊 Đang phát thông báo bằng {selected_option}..."):
@@ -116,7 +119,7 @@ uploaded_file = st.file_uploader("Kéo thả hoặc chọn file Excel dữ liệ
 
 df = None
 
-# CHỈ xử lý hiển thị khi người dùng đã tải file mới lên
+# CHỈ xử lý hiển thị khi người dùng tải file mới lên
 if uploaded_file is not None:
     df = pd.read_excel(uploaded_file)
     st.info("🔄 Đang hiển thị dữ liệu từ file bạn vừa tải lên:")
