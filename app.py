@@ -36,7 +36,7 @@ def clean_amount_for_speech(amount_val):
         # Quy đổi ra đơn vị tỷ
         ty_val = num / 1_000_000_000
         
-        # Làm tròn đến tối đa 3 chữ số thập phân để tránh đọc số lẻ quá dài (Ví dụ: 350.12 triệu -> 0.35 tỷ)
+        # Làm tròn đến tối đa 3 chữ số thập phân để tránh đọc số lẻ quá dài
         ty_rounded = round(ty_val, 3)
         
         # Chuyển đổi dấu chấm thập phân thành chữ để công cụ TTS đọc đúng từ "phẩy"
@@ -47,7 +47,6 @@ def clean_amount_for_speech(amount_val):
             thap_phan = thap_phan.rstrip("0")
             
             if thap_phan:
-                # Trình duyệt/TTS sẽ đọc chữ "phẩy" tự nhiên hơn dấu chấm
                 speech_text = f"{nguyen} phẩy {thap_phan} tỷ đồng"
             else:
                 speech_text = f"{nguyen} tỷ đồng"
@@ -58,9 +57,10 @@ def clean_amount_for_speech(amount_val):
     except:
         return str(amount_val)
 
-# Hàm bất đồng bộ xử lý chuyển văn bản thành âm thanh qua Edge-TTS
+# Hàm bất đồng bộ xử lý chuyển văn bản thành âm thanh qua Edge-TTS (Đã tích hợp giảm tốc độ đọc)
 async def generate_edge_tts(text, voice, output_file):
-    communicate = edge_tts.Communicate(text, voice)
+    # rate="-15%" giúp giảm tốc độ đọc đi 15% so với bình thường để nghe số tiền rõ ràng hơn
+    communicate = edge_tts.Communicate(text, voice, rate="-15%")
     await communicate.save(output_file)
 
 def play_combined_audio(text_list, selected_option):
@@ -105,8 +105,8 @@ def play_combined_audio(text_list, selected_option):
         if os.path.exists(temp_file):
             os.remove(temp_file)
         
-        # Tính thời gian dừng dựa trên số lượng từ (0.5 giây / 1 từ)
-        estimated_seconds = max(4, int(len(full_text.split()) * 0.5))
+        # Tăng thời gian chờ lên một chút (0.6 giây / 1 từ) vì tốc độ đọc đã được giảm xuống
+        estimated_seconds = max(5, int(len(full_text.split()) * 0.6))
         
         with st.spinner(f"🔊 Đang phát thông báo bằng {selected_option}..."):
             time.sleep(estimated_seconds)
